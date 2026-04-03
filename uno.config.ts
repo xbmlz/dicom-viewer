@@ -10,6 +10,7 @@ import {
 
 export default defineConfig({
   shortcuts: [
+    ['fcc', 'flex items-center justify-center'],
   ],
   presets: [
     presetWind3(),
@@ -23,5 +24,12 @@ export default defineConfig({
     transformerDirectives(),
     transformerVariantGroup(),
   ],
+  theme: {
+    colors: {
+      primary: {
+        DEFAULT: 'var(--c-primary)',
+      },
+    },
+  },
   safelist: 'prose prose-sm m-auto text-left'.split(' '),
 })
