@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { SubMenu } from '@/components/ToolButton.vue'
-import ToolButton from '@/components/ToolButton.vue'
+import type { SubMenu } from '@/components/toolbar/ToolButton.vue'
+import { useStudies } from '@/components/thumbnail/useStudies'
 
 const activeTool = ref<string | null>(null)
 
@@ -64,57 +64,7 @@ const measureTools = [
   { id: 'overlay', icon: 'i-lucide-layers', label: '叠加层', submenu: overlaySubmenu },
 ]
 
-interface Series {
-  id: string
-  modality: string
-  number: number
-  desc?: string
-  count: number
-}
-
-interface Study {
-  id: string
-  date: string
-  description?: string
-  patient: { name: string, sex: string, age: string }
-  series: Series[]
-}
-
-const studies = ref<Study[]>([
-  {
-    id: 'study-1',
-    date: '2024-01-15',
-    description: 'CT 胸腹部',
-    patient: { name: '张三', sex: '男', age: '45岁' },
-    series: [
-      { id: '1-1', modality: 'CT', number: 1, desc: '胸部平扫', count: 320 },
-      { id: '1-2', modality: 'CT', number: 2, desc: '腹部增强', count: 256 },
-      { id: '1-3', modality: 'CT', number: 3, count: 128 },
-    ],
-  },
-  {
-    id: 'study-2',
-    date: '2024-03-20',
-    patient: { name: '张三', sex: '男', age: '45岁' },
-    series: [
-      { id: '2-1', modality: 'MR', number: 1, desc: 'T1 轴位', count: 30 },
-      { id: '2-2', modality: 'MR', number: 2, desc: 'T2 冠状位', count: 24 },
-      { id: '2-3', modality: 'MR', number: 3, count: 18 },
-    ],
-  },
-])
-
-const collapsedStudies = ref<Set<string>>(new Set())
-const activeSeriesId = ref<string>('1-1')
-
-function toggleStudy(studyId: string) {
-  const s = collapsedStudies.value
-  s.has(studyId) ? s.delete(studyId) : s.add(studyId)
-}
-
-function seriesLabel(s: Series) {
-  return s.desc || `Series ${s.number}`
-}
+const { studies, activeSeriesId } = useStudies()
 </script>
 
 <template>
@@ -129,7 +79,7 @@ function seriesLabel(s: Series) {
           :icon="t.icon"
           :label="t.label"
           :active="activeTool === t.id"
-          :on-click="() => selectTool(t.id)"
+          @click="() => selectTool(t.id)"
         />
       </div>
 
@@ -142,7 +92,7 @@ function seriesLabel(s: Series) {
           :label="t.label"
           :active="activeTool === t.id"
           :submenu="t.submenu"
-          :on-click="() => selectTool(t.id)"
+          @click="() => selectTool(t.id)"
         />
       </div>
 
@@ -155,7 +105,7 @@ function seriesLabel(s: Series) {
           :label="t.label"
           :active="activeTool === t.id"
           :submenu="t.submenu"
-          :on-click="() => selectTool(t.id)"
+          @click="() => selectTool(t.id)"
         />
       </div>
 
@@ -178,62 +128,8 @@ function seriesLabel(s: Series) {
     </header>
 
     <!-- ══ Main ══ -->
-    <div class="flex-1 flex overflow-hidden">
-      <!-- ── 左侧：序列面板 ── -->
-      <aside class="w-52 shrink-0 flex flex-col bg-[var(--card)] border-r border-[var(--border)] overflow-hidden">
-        <div class="flex-1 overflow-y-auto">
-          <div v-for="study in studies" :key="study.id">
-            <!-- Study 头 -->
-            <div
-              class="sticky top-0 z-10 flex items-center gap-1.5 px-3 py-2 bg-[var(--card)] border-b border-[var(--border)] cursor-pointer select-none hover:bg-[var(--accent)]/50"
-              @click="toggleStudy(study.id)"
-            >
-              <div
-                class="i-lucide-chevron-right w-3.5 h-3.5 shrink-0 text-[var(--muted-foreground)] transition-transform"
-                :class="collapsedStudies.has(study.id) ? '' : 'rotate-90'"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold text-[var(--foreground)] truncate">
-                  {{ study.patient.name }} · {{ study.patient.sex }} · {{ study.patient.age }}
-                </p>
-                <p class="text-xs text-[var(--muted-foreground)] mt-0.5 truncate">
-                  {{ study.date }}{{ study.description ? ` · ${study.description}` : '' }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Series 列表 -->
-            <div v-show="!collapsedStudies.has(study.id)" class="py-1 px-1.5 flex flex-col gap-0.5">
-              <div
-                v-for="s in study.series"
-                :key="s.id"
-                class="flex items-center gap-2.5 px-2 py-2 rd-md cursor-pointer transition-colors select-none"
-                :class="activeSeriesId === s.id
-                  ? 'bg-[var(--accent)] text-[var(--accent-foreground)]'
-                  : 'hover:bg-[var(--accent)]'"
-                @click="activeSeriesId = s.id"
-              >
-                <!-- 缩略图占位 -->
-                <div class="w-10 h-10 shrink-0 rd bg-[var(--muted)] flex items-center justify-center">
-                  <div class="i-lucide-image w-4 h-4 text-[var(--muted-foreground)]" />
-                </div>
-                <!-- 序列信息 -->
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs font-medium text-[var(--foreground)] truncate">
-                    {{ seriesLabel(s) }}
-                  </p>
-                  <p class="text-xs text-[var(--muted-foreground)] mt-0.5">
-                    <span class="font-mono">{{ s.modality }}</span>
-                    &nbsp;·&nbsp;{{ s.count }} 帧
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <!-- ── 右侧：Viewport ── -->
+    <div class="flex-1 flex flex-col landscape:flex-row overflow-hidden">
+      <!-- ── Viewport ── -->
       <main class="flex-1 relative overflow-hidden bg-black flex items-center justify-center">
         <div class="flex flex-col items-center gap-3 select-none pointer-events-none opacity-25">
           <div class="i-lucide-scan-line w-14 h-14 text-white" />
@@ -242,6 +138,9 @@ function seriesLabel(s: Series) {
           </p>
         </div>
       </main>
+
+      <!-- ── 序列面板 ── -->
+      <ThumbnailList v-model:active-series-id="activeSeriesId" :studies="studies" class="landscape:order-first" />
     </div>
   </div>
 </template>

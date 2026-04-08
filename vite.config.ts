@@ -76,5 +76,12 @@ export default defineConfig({
   server: {
     host: true,
     port: 3333,
+    proxy: {
+      '/dicomweb': {
+        target: 'https://d14fa38qiwhyfd.cloudfront.net',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
   },
 })

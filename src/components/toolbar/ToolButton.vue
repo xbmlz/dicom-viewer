@@ -17,7 +17,6 @@ export interface ToolButtonProps {
   icon: string
   label: string
   active?: boolean
-  onClick?: () => void
   submenu?: SubMenu
 }
 
@@ -26,6 +25,9 @@ defineOptions({
 })
 
 const props = defineProps<ToolButtonProps>()
+const emit = defineEmits<{
+  click: []
+}>()
 
 const isOpen = ref(false)
 const buttonRef = ref<HTMLElement | null>(null)
@@ -54,17 +56,15 @@ const currentIcon = computed(() => {
 })
 
 function handleMainClick() {
+  emit('click')
+
   if (props.submenu?.type === 'radio') {
     const item = props.submenu.items.find(i => i.id === radioSelected.value)
     item?.onClick?.()
   }
-  else {
-    props.onClick?.()
-  }
 }
 
-function toggleDropdown(e: MouseEvent) {
-  e.stopPropagation()
+function toggleDropdown() {
   isOpen.value = !isOpen.value
 }
 
@@ -88,14 +88,8 @@ function clickNormal(item: SubMenuItem) {
   isOpen.value = false
 }
 
-function onOutsideClick(e: MouseEvent) {
-  if (buttonRef.value && !buttonRef.value.contains(e.target as Node)) {
-    isOpen.value = false
-  }
-}
-
-onMounted(() => document.addEventListener('click', onOutsideClick))
-onUnmounted(() => document.removeEventListener('click', onOutsideClick))
+onClickOutside(buttonRef, () => isOpen.value = false)
+onKeyStroke('Escape', () => isOpen.value = false)
 </script>
 
 <template>
