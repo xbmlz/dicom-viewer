@@ -1,8 +1,10 @@
 import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { NoirPreset } from './theme'
+
 import '@unocss/reset/tailwind.css'
 
 import './styles/main.css'
@@ -20,6 +22,7 @@ app.use(PrimeVue, {
     },
   },
 })
+app.use(ToastService)
 
 app.use(router)
 

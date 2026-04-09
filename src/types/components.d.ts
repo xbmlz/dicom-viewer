@@ -11,20 +11,11 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    Dialog: typeof import('./../components/ui/Dialog.vue')['default']
-    IconlButton: typeof import('./../components/IconlButton.vue')['default']
-    MenuCheckboxItem: typeof import('./../components/MenuCheckboxItem.vue')['default']
-    MenuItem: typeof import('./../components/MenuItem.vue')['default']
-    MenuNormalItem: typeof import('./../components/MenuNormalItem.vue')['default']
-    MenuRadioItem: typeof import('./../components/MenuRadioItem.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    StudyItem: typeof import('../components/thumbnail/Thumbnail.vue')['default']
-    StudyList: typeof import('../components/thumbnail/ThumbnailList.vue')['default']
     Thumbnail: typeof import('./../components/thumbnail/Thumbnail.vue')['default']
     ThumbnailList: typeof import('./../components/thumbnail/ThumbnailList.vue')['default']
     Toolbar: typeof import('./../components/toolbar/Toolbar.vue')['default']
     ToolButton: typeof import('./../components/toolbar/ToolButton.vue')['default']
-    ToollButton: typeof import('./../components/ToollButton.vue')['default']
   }
 }

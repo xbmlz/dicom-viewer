@@ -18,7 +18,21 @@ export interface Study {
   createdAt: string
   updatedAt: string
 }
-
+/**
+ * 0020000D: StudyInstanceUID
+ * 0008103E: SeriesDescription
+ * 00200011: SeriesNumber
+ * 0020000E: SeriesInstanceUID
+ * 00080060: Modality
+ * 00080021: SeriesDate
+ * 00080031: SeriesTime
+ * 00080005: SpecificCharacterSet
+ * 00080070: Manufacturer
+ * 00080090: ReferringPhysicianName
+ * 00081090: ManufacturerModelName
+ * 00180015: BodyPartExamined
+ * 00181030: ProtocolName
+ */
 export interface Series {
   id: number
   studyInstanceUid: string
