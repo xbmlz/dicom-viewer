@@ -1,146 +1,212 @@
-<script setup lang="ts">
+<script setup lang='ts'>
 import type { SubMenu } from '@/components/toolbar/ToolButton.vue'
-import { useStudies } from '@/components/thumbnail/useStudies'
+import type { Series, Study } from '@/types/dicom'
+import ThumbnailList from '@/components/thumbnail/ThumbnailList.vue'
+import ToolButton from '@/components/toolbar/ToolButton.vue'
+import { isDark, toggleDark } from '@/composables/dark'
 
-const activeTool = ref<string | null>(null)
+defineOptions({
+  name: 'Index',
+})
 
-function selectTool(id: string) {
-  activeTool.value = activeTool.value === id ? null : id
+interface StudyWithSeries extends Study {
+  series: Series[]
 }
 
-// ── Radio：测量工具（同一时间只能选一种）
-const measureSubmenu: SubMenu = {
+const activeTool = ref('window')
+const activeSeriesId = ref(102)
+
+const studies = ref<StudyWithSeries[]>([
+  {
+    id: 1,
+    studyId: 'STUDY-001',
+    studyInstanceUid: '1.2.840.10008.1.2.1.study.001',
+    studyDate: '2026-04-09',
+    studyTime: '09:42:00',
+    studyDescription: 'CT Chest Without Contrast',
+    accessionNumber: 'ACC-20260409-01',
+    patientId: 'P103829',
+    patientName: 'Zhang San',
+    patientBirthDate: '1980-01-16',
+    patientSex: 'M',
+    modality: 'CT',
+    manufacturer: 'SIEMENS',
+    institutionName: 'OpenAI Medical Center',
+    numberOfSeries: 3,
+    numberOfInstances: 448,
+    createdAt: '2026-04-09T09:42:00Z',
+    updatedAt: '2026-04-09T09:42:00Z',
+    series: [
+      {
+        id: 101,
+        studyInstanceUid: '1.2.840.10008.1.2.1.study.001',
+        seriesInstanceUid: '1.2.840.10008.1.2.1.series.001',
+        seriesNumber: 1,
+        seriesDate: '2026-04-09',
+        seriesTime: '09:43:00',
+        seriesDescription: 'Scout',
+        modality: 'CT',
+        bodyPartExamined: 'CHEST',
+        numberOfInstances: 4,
+        createdAt: '2026-04-09T09:43:00Z',
+        updatedAt: '2026-04-09T09:43:00Z',
+      },
+      {
+        id: 102,
+        studyInstanceUid: '1.2.840.10008.1.2.1.study.001',
+        seriesInstanceUid: '1.2.840.10008.1.2.1.series.002',
+        seriesNumber: 2,
+        seriesDate: '2026-04-09',
+        seriesTime: '09:44:00',
+        seriesDescription: 'Axial Lung',
+        modality: 'CT',
+        bodyPartExamined: 'CHEST',
+        numberOfInstances: 356,
+        createdAt: '2026-04-09T09:44:00Z',
+        updatedAt: '2026-04-09T09:44:00Z',
+      },
+      {
+        id: 103,
+        studyInstanceUid: '1.2.840.10008.1.2.1.study.001',
+        seriesInstanceUid: '1.2.840.10008.1.2.1.series.003',
+        seriesNumber: 3,
+        seriesDate: '2026-04-09',
+        seriesTime: '09:45:00',
+        seriesDescription: 'Coronal MPR',
+        modality: 'CT',
+        bodyPartExamined: 'CHEST',
+        numberOfInstances: 88,
+        createdAt: '2026-04-09T09:45:00Z',
+        updatedAt: '2026-04-09T09:45:00Z',
+      },
+    ],
+  },
+  {
+    id: 2,
+    studyId: 'STUDY-002',
+    studyInstanceUid: '1.2.840.10008.1.2.1.study.002',
+    studyDate: '2026-04-08',
+    studyTime: '14:10:00',
+    studyDescription: 'MR Brain Routine',
+    accessionNumber: 'ACC-20260408-02',
+    patientId: 'P204556',
+    patientName: 'Li Si',
+    patientBirthDate: '1991-07-09',
+    patientSex: 'F',
+    modality: 'MR',
+    manufacturer: 'GE',
+    institutionName: 'OpenAI Medical Center',
+    numberOfSeries: 2,
+    numberOfInstances: 412,
+    createdAt: '2026-04-08T14:10:00Z',
+    updatedAt: '2026-04-08T14:10:00Z',
+    series: [
+      {
+        id: 201,
+        studyInstanceUid: '1.2.840.10008.1.2.1.study.002',
+        seriesInstanceUid: '1.2.840.10008.1.2.1.series.004',
+        seriesNumber: 1,
+        seriesDate: '2026-04-08',
+        seriesTime: '14:11:00',
+        seriesDescription: 'Ax T1',
+        modality: 'MR',
+        bodyPartExamined: 'BRAIN',
+        numberOfInstances: 186,
+        createdAt: '2026-04-08T14:11:00Z',
+        updatedAt: '2026-04-08T14:11:00Z',
+      },
+      {
+        id: 202,
+        studyInstanceUid: '1.2.840.10008.1.2.1.study.002',
+        seriesInstanceUid: '1.2.840.10008.1.2.1.series.005',
+        seriesNumber: 2,
+        seriesDate: '2026-04-08',
+        seriesTime: '14:14:00',
+        seriesDescription: 'Ax FLAIR',
+        modality: 'MR',
+        bodyPartExamined: 'BRAIN',
+        numberOfInstances: 226,
+        createdAt: '2026-04-08T14:14:00Z',
+        updatedAt: '2026-04-08T14:14:00Z',
+      },
+    ],
+  },
+])
+
+function activateTool(toolId: string) {
+  activeTool.value = toolId
+}
+
+const measureMenu = computed<SubMenu>(() => ({
   type: 'radio',
   items: [
-    { id: 'line', icon: 'i-lucide-minus', label: '直线测量', checked: true, onClick: () => selectTool('measure') },
-    { id: 'angle', icon: 'i-lucide-triangle', label: '角度测量', onClick: () => selectTool('measure') },
-    { id: 'area', icon: 'i-lucide-pentagon', label: '面积测量', onClick: () => selectTool('measure') },
-    { id: 'ellipse', icon: 'i-lucide-circle-dashed', label: '椭圆测量', onClick: () => selectTool('measure') },
+    {
+      id: 'length',
+      label: 'Length',
+      icon: 'i-lucide-ruler',
+      shortcut: 'L',
+      checked: activeTool.value === 'length',
+      onClick: () => activateTool('length'),
+    },
+    {
+      id: 'angle',
+      label: 'Angle',
+      icon: 'i-lucide-triangle-right',
+      shortcut: 'A',
+      checked: activeTool.value === 'angle',
+      onClick: () => activateTool('angle'),
+    },
   ],
-  onChange: ([id]) => console.warn('[measure] 切换为:', id),
-}
-
-// ── Checkbox：叠加层显示（可同时开启多项）
-const overlaySubmenu: SubMenu = {
-  type: 'checkbox',
-  items: [
-    { id: 'labels', icon: 'i-lucide-tag', label: '显示标签', checked: true },
-    { id: 'lengths', icon: 'i-lucide-ruler', label: '显示长度', checked: true },
-    { id: 'angles', icon: 'i-lucide-triangle', label: '显示角度', checked: false },
-    { id: 'coords', icon: 'i-lucide-crosshair', label: '显示坐标', checked: false },
-  ],
-  onChange: ids => console.warn('[overlay] 当前开启:', ids),
-}
-
-// ── Normal：窗宽窗位预设（点击即执行）
-const windowSubmenu: SubMenu = {
-  type: 'normal',
-  items: [
-    { id: 'lung', icon: 'i-lucide-wind', label: '肺窗', onClick: () => applyPreset('lung') },
-    { id: 'bone', icon: 'i-lucide-bone', label: '骨窗', onClick: () => applyPreset('bone') },
-    { id: 'brain', icon: 'i-lucide-brain', label: '脑窗', onClick: () => applyPreset('brain') },
-    { id: 'abdomen', icon: 'i-lucide-circle-dot', label: '腹窗', onClick: () => applyPreset('abdomen') },
-    { id: 'mediastinum', icon: 'i-lucide-heart-pulse', label: '纵隔窗', onClick: () => applyPreset('mediastinum') },
-  ],
-}
-
-function applyPreset(name: string) {
-  selectTool('window')
-  console.warn('[window] 应用预设:', name)
-}
-
-// ── 工具组
-const viewTools = [
-  { id: 'zoom', icon: 'i-lucide-zoom-in', label: '缩放' },
-  { id: 'pan', icon: 'i-lucide-move', label: '平移' },
-]
-
-const imageTools = [
-  { id: 'window', icon: 'i-lucide-contrast', label: '窗宽窗位', submenu: windowSubmenu },
-]
-
-const measureTools = [
-  { id: 'measure', icon: 'i-lucide-ruler', label: '测量', submenu: measureSubmenu },
-  { id: 'overlay', icon: 'i-lucide-layers', label: '叠加层', submenu: overlaySubmenu },
-]
-
-const { studies, activeSeriesId } = useStudies()
+}))
 </script>
 
 <template>
-  <div class="size-full flex flex-col bg-[var(--background)] overflow-hidden">
-    <!-- ══ Toolbar ══ -->
-    <header class="shrink-0 flex items-center gap-1 px-2 h-11 bg-[var(--card)] border-b border-[var(--border)]">
-      <!-- 视图工具 -->
-      <div class="flex items-center gap-0.5">
+  <div class="h-screen flex flex-col overflow-hidden text-[var(--text-color)]">
+    <header class="shrink-0 border-b border-[var(--p-content-border-color)] px-4 py-2">
+      <div class="flex flex-wrap items-center gap-2">
         <ToolButton
-          v-for="t in viewTools"
-          :key="t.id"
-          :icon="t.icon"
-          :label="t.label"
-          :active="activeTool === t.id"
-          @click="() => selectTool(t.id)"
+          icon="i-lucide-mouse-pointer-2"
+          label="Select"
+          :active="activeTool === 'select'"
+          @click="activateTool('select')"
         />
-      </div>
-
-      <!-- 影像工具 -->
-      <div class="flex items-center gap-0.5">
         <ToolButton
-          v-for="t in imageTools"
-          :key="t.id"
-          :icon="t.icon"
-          :label="t.label"
-          :active="activeTool === t.id"
-          :submenu="t.submenu"
-          @click="() => selectTool(t.id)"
+          icon="i-lucide-hand"
+          label="Pan"
+          :active="activeTool === 'pan'"
+          @click="activateTool('pan')"
         />
-      </div>
-
-      <!-- 测量工具 -->
-      <div class="flex items-center gap-0.5">
         <ToolButton
-          v-for="t in measureTools"
-          :key="t.id"
-          :icon="t.icon"
-          :label="t.label"
-          :active="activeTool === t.id"
-          :submenu="t.submenu"
-          @click="() => selectTool(t.id)"
+          icon="i-lucide-circle-dot"
+          label="Window"
+          :active="activeTool === 'window'"
+          @click="activateTool('window')"
         />
-      </div>
-
-      <!-- 弹性空白 -->
-      <div class="flex-1" />
-
-      <!-- 右侧：重置 + 主题切换 -->
-      <div class="flex items-center gap-0.5">
         <ToolButton
-          icon="i-lucide-rotate-ccw"
-          label="重置视图"
-          @click="() => selectTool('reset')"
+          icon="i-lucide-ruler"
+          label="Measure"
+          :active="['length', 'angle'].includes(activeTool)"
+          :submenu="measureMenu"
+          @click="activateTool(activeTool)"
         />
-        <a
+        <ToolButton
+          :icon="isDark ? 'i-lucide-moon-star' : 'i-lucide-sun-medium'"
+          label="Theme"
           @click="toggleDark()"
-        >
-          <div :class="isDark ? 'i-lucide-moon' : 'i-lucide-sun'" />
-        </a>
+        />
       </div>
     </header>
 
-    <!-- ══ Main ══ -->
-    <div class="flex-1 flex flex-col landscape:flex-row overflow-hidden">
-      <!-- ── Viewport ── -->
-      <main class="flex-1 relative overflow-hidden bg-black flex items-center justify-center">
-        <div class="flex flex-col items-center gap-3 select-none pointer-events-none opacity-25">
-          <div class="i-lucide-scan-line w-14 h-14 text-white" />
-          <p class="text-sm text-white">
-            暂无影像，请加载 DICOM 文件
-          </p>
-        </div>
-      </main>
+    <main class="flex min-h-0 flex-1 flex-col landscape:flex-row">
+      <section class="order-2 h-32 shrink-0 border-t border-[var(--p-content-border-color)] landscape:(order-1 h-auto w-72 border-r border-t-0)">
+        <ThumbnailList v-model:active-series-id="activeSeriesId" :studies="studies" />
+      </section>
 
-      <!-- ── 序列面板 ── -->
-      <ThumbnailList v-model:active-series-id="activeSeriesId" :studies="studies" class="landscape:order-first" />
-    </div>
+      <section class="order-1 min-h-0 flex-1 border-b border-[var(--p-content-border-color)] landscape:(order-2 border-b-0)">
+        <div class="flex h-full items-center justify-center text-sm text-[var(--p-text-muted-color)]">
+          Viewport
+        </div>
+      </section>
+    </main>
   </div>
 </template>

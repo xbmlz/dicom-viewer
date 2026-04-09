@@ -1,9 +1,16 @@
 <script setup lang='ts'>
+import type { MenuItem } from 'primevue/menuitem'
+import TieredMenu from 'primevue/tieredmenu'
+
 export interface SubMenuItem {
   id: string
   icon?: string
   label: string
+  shortcut?: string
   checked?: boolean
+  disabled?: boolean
+  separator?: boolean
+  items?: SubMenuItem[]
   onClick?: () => void
 }
 
@@ -20,6 +27,12 @@ export interface ToolButtonProps {
   submenu?: SubMenu
 }
 
+interface ToolMenuItem extends MenuItem {
+  id: string
+  shortcut?: string
+  checked?: boolean
+}
+
 defineOptions({
   name: 'ToolButton',
 })
@@ -29,27 +42,78 @@ const emit = defineEmits<{
   click: []
 }>()
 
-const isOpen = ref(false)
-const buttonRef = ref<HTMLElement | null>(null)
+const menuRef = ref<InstanceType<typeof TieredMenu> | null>(null)
+const radioSelected = ref('')
+const checkboxState = ref<Record<string, boolean>>({})
 
-// Radio: single selected item id
-const radioSelected = ref<string>(
-  props.submenu?.type === 'radio'
-    ? (props.submenu.items.find(i => i.checked)?.id ?? props.submenu.items[0]?.id ?? '')
-    : '',
-)
+function buildCheckboxState(items: SubMenuItem[]): Record<string, boolean> {
+  return items.reduce<Record<string, boolean>>((state, item) => {
+    state[item.id] = item.checked ?? false
+    if (item.items)
+      Object.assign(state, buildCheckboxState(item.items))
+    return state
+  }, {})
+}
 
-// Checkbox: per-item checked state
-const checkboxState = ref<Record<string, boolean>>(
-  props.submenu?.type === 'checkbox'
-    ? Object.fromEntries(props.submenu.items.map(i => [i.id, i.checked ?? false]))
-    : {},
-)
+function findFirstCheckedRadio(items: SubMenuItem[]): string {
+  for (const item of items) {
+    if (item.checked)
+      return item.id
+    if (item.items) {
+      const nestedCheckedId = findFirstCheckedRadio(item.items)
+      if (nestedCheckedId)
+        return nestedCheckedId
+    }
+  }
+  return ''
+}
 
-// Radio mode: swap main icon to match current selection
+function findFirstItemId(items: SubMenuItem[]): string {
+  for (const item of items) {
+    if (item.separator)
+      continue
+    if (item.id)
+      return item.id
+    if (item.items) {
+      const nestedId = findFirstItemId(item.items)
+      if (nestedId)
+        return nestedId
+    }
+  }
+  return ''
+}
+
+function findItemById(items: SubMenuItem[], id: string): SubMenuItem | undefined {
+  for (const item of items) {
+    if (item.id === id)
+      return item
+    if (item.items) {
+      const nestedItem = findItemById(item.items, id)
+      if (nestedItem)
+        return nestedItem
+    }
+  }
+  return undefined
+}
+
+function syncMenuState(submenu?: SubMenu) {
+  if (submenu?.type === 'radio') {
+    radioSelected.value = findFirstCheckedRadio(submenu.items) || findFirstItemId(submenu.items)
+  }
+  else {
+    radioSelected.value = ''
+  }
+
+  checkboxState.value = submenu?.type === 'checkbox'
+    ? buildCheckboxState(submenu.items)
+    : {}
+}
+
+watch(() => props.submenu, submenu => syncMenuState(submenu), { immediate: true, deep: true })
+
 const currentIcon = computed(() => {
   if (props.submenu?.type === 'radio' && radioSelected.value) {
-    const found = props.submenu.items.find(i => i.id === radioSelected.value)
+    const found = findItemById(props.submenu.items, radioSelected.value)
     return found?.icon ?? props.icon
   }
   return props.icon
@@ -59,107 +123,130 @@ function handleMainClick() {
   emit('click')
 
   if (props.submenu?.type === 'radio') {
-    const item = props.submenu.items.find(i => i.id === radioSelected.value)
+    const item = findItemById(props.submenu.items, radioSelected.value)
     item?.onClick?.()
   }
 }
 
-function toggleDropdown() {
-  isOpen.value = !isOpen.value
+function getSelectedCheckboxIds() {
+  return Object.entries(checkboxState.value)
+    .filter(([, checked]) => checked)
+    .map(([id]) => id)
 }
 
-function selectRadio(item: SubMenuItem) {
-  radioSelected.value = item.id
-  props.submenu?.onChange?.([item.id])
+function handleMenuItemClick(item: SubMenuItem) {
+  if (props.submenu?.type === 'radio') {
+    radioSelected.value = item.id
+    props.submenu.onChange?.([item.id])
+  }
+  else if (props.submenu?.type === 'checkbox') {
+    checkboxState.value = {
+      ...checkboxState.value,
+      [item.id]: !checkboxState.value[item.id],
+    }
+    props.submenu.onChange?.(getSelectedCheckboxIds())
+  }
+
   item.onClick?.()
-  isOpen.value = false
 }
 
-function toggleCheckbox(item: SubMenuItem) {
-  checkboxState.value[item.id] = !checkboxState.value[item.id]
-  const selected = Object.entries(checkboxState.value)
-    .filter(([, v]) => v)
-    .map(([k]) => k)
-  props.submenu?.onChange?.(selected)
+function mapItems(items: SubMenuItem[]): ToolMenuItem[] {
+  return items.map((item) => {
+    if (item.separator) {
+      return {
+        id: item.id,
+        separator: true,
+      }
+    }
+
+    return {
+      id: item.id,
+      label: item.label,
+      icon: item.icon,
+      shortcut: item.shortcut,
+      disabled: item.disabled,
+      checked: props.submenu?.type === 'radio'
+        ? radioSelected.value === item.id
+        : props.submenu?.type === 'checkbox'
+          ? !!checkboxState.value[item.id]
+          : false,
+      items: item.items ? mapItems(item.items) : undefined,
+      command: () => handleMenuItemClick(item),
+    }
+  })
 }
 
-function clickNormal(item: SubMenuItem) {
-  item.onClick?.()
-  isOpen.value = false
-}
+const menuItems = computed(() => props.submenu ? mapItems(props.submenu.items) : [])
 
-onClickOutside(buttonRef, () => isOpen.value = false)
-onKeyStroke('Escape', () => isOpen.value = false)
+function toggleDropdown(event: MouseEvent) {
+  menuRef.value?.toggle(event)
+}
 </script>
 
 <template>
-  <div ref="buttonRef" class="relative inline-flex">
-    <!-- Button group -->
+  <div class="relative inline-flex">
     <div class="inline-flex items-stretch rd-md">
-      <!-- Main action -->
       <button
-        class="fcc w-10 h-10 rd-md cursor-pointer transition-colors"
-        :class="active
-          ? 'bg-[var(--accent)] text-[var(--accent-foreground)]'
-          : 'hover:bg-[var(--accent)]'"
+        class="fcc h-10 cursor-pointer transition-colors"
+        :class="[
+          submenu ? 'w-10 rd-l-md' : 'w-10 rd-md',
+          active
+            ? 'bg-[var(--p-primary-color)] text-[var(--p-primary-contrast-color)]'
+            : 'text-[var(--p-text-color)] hover:bg-[var(--p-content-border-color)]',
+        ]"
         :title="label"
+        type="button"
         @click="handleMainClick"
       >
         <div :class="currentIcon" />
       </button>
 
-      <!-- Dropdown trigger -->
       <button
         v-if="submenu"
-        class="fcc w-4 h-10 rd-r-md cursor-pointer transition-colors"
+        class="fcc h-10 w-4 rd-r-md cursor-pointer transition-colors"
         :class="active
-          ? 'bg-[var(--accent)] text-[var(--accent-foreground)]'
-          : 'hover:bg-[var(--accent)]'"
+          ? 'bg-[var(--p-primary-color)] text-[var(--p-primary-contrast-color)]'
+          : 'text-[var(--p-text-color)] hover:bg-[var(--p-content-border-color)]'"
         :title="`${label} 选项`"
+        type="button"
         @click="toggleDropdown"
       >
-        <div class="i-lucide-chevron-down w-3 h-3 opacity-60" />
+        <div class="i-lucide-chevron-down h-3 w-3 opacity-60" />
       </button>
     </div>
 
-    <!-- Dropdown panel -->
-    <Transition name="menu-fade">
-      <div
-        v-if="isOpen && submenu"
-        class="absolute top-full left-0 mt-1 min-w-44 bg-[var(--popover)] border border-[var(--border)] rd-lg shadow-xl z-50 py-1 overflow-hidden"
-      >
-        <div
-          v-for="item in submenu.items"
-          :key="item.id"
-          class="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-[var(--accent)] select-none"
-          @click="submenu.type === 'radio' ? selectRadio(item) : submenu.type === 'checkbox' ? toggleCheckbox(item) : clickNormal(item)"
+    <TieredMenu
+      v-if="submenu"
+      ref="menuRef"
+      :model="menuItems"
+      popup
+      :pt="{
+        root: { class: 'min-w-52 overflow-hidden rd-lg border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] shadow-xl' },
+        rootList: { class: 'py-1' },
+      }"
+    >
+      <template #item="{ item, props: menuItemProps, hasSubmenu }">
+        <a
+          class="flex items-center gap-2.5 px-3 py-2 text-sm select-none"
+          v-bind="menuItemProps.action"
         >
-          <template v-if="submenu.type !== 'normal'">
+          <div class="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
             <div
-              v-if="submenu.type === 'radio' ? radioSelected === item.id : checkboxState[item.id]"
-              class="i-lucide-check w-3.5 h-3.5 shrink-0 text-[var(--primary)]"
+              v-if="item.checked"
+              class="i-lucide-check h-3.5 w-3.5 text-[var(--p-primary-color)]"
             />
-            <div v-else class="w-3.5 h-3.5 shrink-0" />
-          </template>
+          </div>
           <div v-if="item.icon" :class="item.icon" class="shrink-0 text-sm" />
-          <span class="text-sm text-[var(--foreground)] whitespace-nowrap">{{ item.label }}</span>
-        </div>
-      </div>
-    </Transition>
+          <span class="flex-1 whitespace-nowrap text-[var(--p-text-color)]">{{ item.label }}</span>
+          <span
+            v-if="item.shortcut"
+            class="rounded border border-[var(--p-content-border-color)] bg-[var(--p-content-border-color)] px-1.5 py-0.5 text-xs text-[var(--p-text-muted-color)]"
+          >
+            {{ item.shortcut }}
+          </span>
+          <i v-if="hasSubmenu" class="pi pi-angle-right ml-1 text-xs opacity-70" />
+        </a>
+      </template>
+    </TieredMenu>
   </div>
 </template>
-
-<style scoped>
-.menu-fade-enter-active,
-.menu-fade-leave-active {
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
-}
-
-.menu-fade-enter-from,
-.menu-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-</style>

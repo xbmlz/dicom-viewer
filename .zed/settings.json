@@ -1,4 +1,12 @@
 {
+  "context_servers": {
+    "primevue": {
+      "command": {
+        "path": "npx",
+        "args": ["-y", "@primevue/mcp"]
+      }
+    }
+  },
   "format_on_save": "on",
   "formatter": [
     // Use ESLint's --fix:

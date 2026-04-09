@@ -1,5 +1,5 @@
 {
-  "name": "viewer",
+  "name": "dicom-viewer",
   "type": "module",
   "version": "0.0.0",
   "private": true,
@@ -15,14 +15,14 @@
     "@cornerstonejs/dicom-image-loader": "^4.21.0",
     "@cornerstonejs/tools": "^4.21.0",
     "@originjs/vite-plugin-commonjs": "^1.0.3",
+    "@primeuix/themes": "^2.0.3",
     "@unhead/vue": "^2.1.13",
     "@unocss/reset": "^66.6.7",
     "@vueuse/core": "^14.2.1",
-    "dcmjs": "^0.50.1",
     "dicom-parser": "^1.8.21",
-    "dicomweb-client": "^0.11.2",
     "nprogress": "^0.2.0",
     "pinia": "^3.0.4",
+    "primevue": "^4.5.5",
     "vue": "^3.5.32",
     "vue-i18n": "^11.3.1",
     "vue-router": "^5.0.4"
